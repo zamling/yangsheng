@@ -11,6 +11,16 @@ import torch
 
 import util.misc as utils
 
+def normMask(inst_map):
+    new_mask_image = torch.zeros([inst_map.shape[0], inst_map.shape[1], inst_map.shape[2], inst_map.shape[3]],
+                                 dtype=torch.float32, device=inst_map.device)
+    for i in range(inst_map.shape[0]):
+        f_mask = inst_map[i, :, :, :]
+        zero = torch.zeros_like(f_mask)
+        one = torch.ones_like(f_mask)
+        f_mask = torch.where(f_mask > 0, one, zero)
+        new_mask_image[i, :, :, :] = f_mask
+    return new_mask_image
 
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
@@ -23,11 +33,13 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 10
 
-    for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
+    for samples, mask, edge, label in metric_logger.log_every(data_loader, print_freq, header):
         # samples shape: NestTensor: img [0]:(b,c,h,w), mask [1]:(b,h,w)
         samples = samples.to(device)
+        mask = normMask(mask)
+        edge = normMask(edge)
         # the format of coco dataset: ID, bbox, ...
-        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+        targets = {'mask':mask.to(device),'edge':edge.to(device),'label':label.to(device)}
 
         outputs = model(samples)
         losses, loss_dict = criterion(outputs, targets)

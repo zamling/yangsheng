@@ -346,6 +346,8 @@ class MVSSNet(ResNet50):
 
         x = self.head(c4)
         x0 = F.interpolate(x[0], size, mode='bilinear', align_corners=True)
+        x0 = torch.sigmoid(x0)
+        res1 = torch.sigmoid(res1)
         outputs.append(x0)
 
         if self.aux:

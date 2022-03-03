@@ -10,10 +10,9 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, DistributedSampler
 
-import dataset
 import util.misc as utils
 from dataset import build_dataset
-from engine import evaluate, train_one_epoch
+from engine import train_one_epoch
 from models import build_model
 
 
@@ -34,7 +33,7 @@ def get_args_parser():
 
     # dataset parameters
     parser.add_argument('--dataset_file', default='casia')
-    parser.add_argument('--dataset_path', type=str)
+    parser.add_argument('--dataset_path', type=str, default='/data1/zem/MVSS-Net/data')
     parser.add_argument('--remove_difficult', action='store_true')
 
     parser.add_argument('--output_dir', default='',
@@ -46,7 +45,7 @@ def get_args_parser():
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
-    parser.add_argument('--num_workers', default=2, type=int)
+    parser.add_argument('--num_workers', default=0, type=int)
 
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int,
@@ -81,11 +80,10 @@ def main(args):
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print('number of params:', n_parameters)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,
+    optimizer = torch.optim.Adam(model_without_ddp.parameters(), lr=args.lr,
                                   weight_decay=args.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_drop)
 
-# up to now#################################################
     #load datasets
 
     dataset_train = build_dataset(image_set='train', args=args)

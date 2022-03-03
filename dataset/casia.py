@@ -1,7 +1,6 @@
 from pathlib import Path
 from PIL import Image
 import cv2
-import dataset.transforms as T
 
 import torch
 import torch.utils.data
@@ -19,32 +18,36 @@ class CASIA_Dataset(object):
     def __getitem__(self, idx):
         pathes = self.data[idx]
         img_path, mask_path, edge_path, label = pathes.split(' ')
+        label = int(label)
         img = cv2.imread(img_path)
         mask = cv2.imread(mask_path,0)
         edge = cv2.imread(edge_path,0)
 
-        target = {'mask': mask, 'edge': edge}
         if self._transforms is not None:
-            img, target = self._transforms(img, target)
-        return img, target
+            img, mask, edge = self._transforms(img, mask, edge)
+
+        return img, mask, edge, label
+
+
 
 class resizeNormalize(object):
 
-    def __init__(self, size, interpolation=Image.BILINEAR):
+    def __init__(self, size, interpolation=cv2.INTER_LINEAR):
         self.size = size
         self.interpolation = interpolation
 
         self.toTensor = torchvision.transforms.ToTensor()
 
-    def __call__(self, img,target):
-        img = img.resize((self.size,self.size), self.interpolation)
-        target['mask'] = target['mask'].resize((self.size,self.size), self.interpolation)
-        target['edge'] = target['edge'].resize((self.size/4,self.size/4), self.interpolation)
+    def __call__(self, img,mask,edge):
+        img = cv2.resize(img,(self.size,self.size),self.interpolation)
+        mask = cv2.resize(mask,(self.size,self.size),self.interpolation)
+        edge = cv2.resize(edge,(int(self.size/4),int(self.size/4)),self.interpolation)
         img = self.toTensor(img)
-        target['mask'] = self.toTensor(target['mask'])
-        target['edge'] = self.toTensor(target['edge'])
+        mask = torch.as_tensor(mask).unsqueeze(0)
+        edge = torch.as_tensor(edge).unsqueeze(0)
+
         img.sub_(0.5).div_(0.5)
-        return img,target
+        return img,mask,edge
 
 
 def build(image_set, args):
@@ -52,11 +55,11 @@ def build(image_set, args):
     assert root.exists(), f'provided CASIA path {root} does not exist'
     # modify to the real path
     PATHS = {
-        "train": root / "...",
-        "val": root / "...",
+        "train": root / "mydata.txt",
+        "val": root / "mydata.txt",
     }
 
-    img_folder, ann_file = PATHS[image_set]
+    img_folder = PATHS[image_set]
     dataset = CASIA_Dataset(img_folder, transforms=resizeNormalize(size=512))
 
     return dataset
