@@ -57,13 +57,11 @@ class SmoothedValue(object):
 
     @property
     def median(self):
-        d = torch.tensor(list(self.deque))
-        return d.median().item()
+        return torch.tensor(list(self.deque)).median().item()
 
     @property
     def avg(self):
-        d = torch.tensor(list(self.deque), dtype=torch.float32)
-        return d.mean().item()
+        return torch.tensor(list(self.deque), dtype=torch.float32).mean().item()
 
     @property
     def global_avg(self):
@@ -232,7 +230,8 @@ class MetricLogger(object):
                         i, len(iterable), eta=eta_string,
                         meters=str(self),
                         time=str(iter_time), data=str(data_time),
-                        memory=torch.cuda.max_memory_allocated() / MB))
+                        memory=torch.cuda.max_memory_allocated() / MB
+                    ))
                 else:
                     print(log_msg.format(
                         i, len(iterable), eta=eta_string,
